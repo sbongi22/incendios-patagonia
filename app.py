@@ -97,14 +97,29 @@ class AnalizadorIncendiosHistorico:
         return df
 
     def filtrar_por_confianza(self, df, minima=70):
+        # 1. Crear una copia para no romper el original
+        df = df.copy()
+        
+        # 2. Mapeo para casos donde la confianza es texto (l, n, h)
+        mapa_texto = {
+            'low': 30, 'l': 30,
+            'nominal': 60, 'n': 60,
+            'high': 90, 'h': 90
+        }
+        
+        # 3. Convertir a string, limpiar espacios, pasar a minúsculas y mapear
         if df['confidence'].dtype == 'object':
-            mapa = {'low': 30, 'nominal': 60, 'high': 90, 'l': 30, 'n': 60, 'h': 90}
-            df['confidence'] = df['confidence'].apply(lambda x: mapa.get(str(x).lower(), 50))
+            # Si el valor es una de las palabras del mapa, lo cambiamos a número
+            # Si ya es un número en formato texto (ej: "85"), to_numeric lo arregla
+            df['confidence'] = pd.to_numeric(df['confidence'], errors='coerce').fillna(
+                df['confidence'].str.lower().str.strip().map(mapa_texto)
+            )
+        
+        # 4. Por seguridad, llenar cualquier valor nulo con un valor bajo
+        df['confidence'] = df['confidence'].fillna(0).astype(int)
+        
+        # 5. Ahora sí, la comparación numérica segura
         return df[df['confidence'] >= minima].copy()
-
-    def agregar_informacion_temporal(self, df):
-        df['acq_date'] = pd.to_datetime(df['acq_date'])
-        return df
 
     def crear_mapa_interactivo(self, df, nombre='mapa_incendios_historico.html'):
         mapa = folium.Map(location=[df['latitude'].mean(), df['longitude'].mean()], zoom_start=6)
