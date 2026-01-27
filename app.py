@@ -3,21 +3,18 @@ import requests
 import pandas as pd
 import folium
 from folium.plugins import HeatMap, MarkerCluster
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import numpy as np
 from io import StringIO
-import time
 from flask import Flask, render_template, send_file
 
 # ==========================================
-# CLASE DE PROCESAMIENTO (Analizador)
+# CLASE DE PROCESAMIENTO
 # ==========================================
 class AnalizadorIncendiosHistorico:
     def __init__(self, map_key):
         self.map_key = map_key
-        self.zona_bounds = "-72.5,-47,-69,-42" # Patagonia Argentina
+        self.zona_bounds = "-72.5,-47,-69,-42" # Patagonia
         self.fecha_inicio_incendios = datetime(2026, 1, 1)
         self.openmeteo_url = "https://api.open-meteo.com/v1/forecast"
 
@@ -57,7 +54,6 @@ class AnalizadorIncendiosHistorico:
         else: return "EXTREMO"
 
     def agregar_datos_meteorologicos_rapido(self, df):
-        cache_meteo = {}
         df['lat_red'] = df['latitude'].round(1)
         df['lon_red'] = df['longitude'].round(1)
         ubicaciones = df[['lat_red', 'lon_red']].drop_duplicates()
@@ -98,39 +94,23 @@ class AnalizadorIncendiosHistorico:
 
     def filtrar_por_confianza(self, df, minima=70):
         df = df.copy()
+        mapa_niveles = {'l': 30, 'low': 30, 'n': 60, 'nominal': 60, 'h': 90, 'high': 90}
         
-        # Diccionario de traducción para los satélites que usan letras
-        mapa_niveles = {
-            'l': 30, 'low': 30,
-            'n': 60, 'nominal': 60,
-            'h': 90, 'high': 90
-        }
-
         def sanitizar_confianza(valor):
-            # 1. Si ya es un número (int o float), lo devolvemos
-            if isinstance(valor, (int, float, np.number)):
-                return float(valor)
-            
-            # 2. Si es un string, lo limpiamos
+            if isinstance(valor, (int, float, np.number)): return float(valor)
             val_str = str(valor).lower().strip()
-            
-            # 3. ¿Es una letra conocida (n, h, l)?
-            if val_str in mapa_niveles:
-                return float(mapa_niveles[val_str])
-            
-            # 4. ¿Es un número guardado como string (ej: "85")?
-            try:
-                return float(val_str)
-            except ValueError:
-                return 0.0 # Si es algo raro, riesgo bajo por defecto
+            if val_str in mapa_niveles: return float(mapa_niveles[val_str])
+            try: return float(val_str)
+            except ValueError: return 0.0
 
-        # Aplicamos la función fila por fila
-        df['confidence'] = df['confidence'].apply(sanitizar_confianza)
-        
-        # Ahora que son todos floats, aseguramos el tipo y filtramos
-        df['confidence'] = df['confidence'].astype(float)
-        
+        df['confidence'] = df['confidence'].apply(sanitizar_confianza).astype(float)
         return df[df['confidence'] >= minima].copy()
+
+    def agregar_informacion_temporal(self, df):
+        df['acq_date'] = pd.to_datetime(df['acq_date'])
+        df['semana'] = df['acq_date'].dt.isocalendar().week
+        df['mes'] = df['acq_date'].dt.month
+        return df
 
     def crear_mapa_interactivo(self, df, nombre='mapa_incendios_historico.html'):
         mapa = folium.Map(location=[df['latitude'].mean(), df['longitude'].mean()], zoom_start=6)
@@ -176,5 +156,5 @@ def ver_mapa():
     return send_file('mapa_incendios_historico.html')
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
