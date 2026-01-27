@@ -97,28 +97,39 @@ class AnalizadorIncendiosHistorico:
         return df
 
     def filtrar_por_confianza(self, df, minima=70):
-        # 1. Crear una copia para no romper el original
         df = df.copy()
         
-        # 2. Mapeo para casos donde la confianza es texto (l, n, h)
-        mapa_texto = {
-            'low': 30, 'l': 30,
-            'nominal': 60, 'n': 60,
-            'high': 90, 'h': 90
+        # Diccionario de traducción para los satélites que usan letras
+        mapa_niveles = {
+            'l': 30, 'low': 30,
+            'n': 60, 'nominal': 60,
+            'h': 90, 'high': 90
         }
+
+        def sanitizar_confianza(valor):
+            # 1. Si ya es un número (int o float), lo devolvemos
+            if isinstance(valor, (int, float, np.number)):
+                return float(valor)
+            
+            # 2. Si es un string, lo limpiamos
+            val_str = str(valor).lower().strip()
+            
+            # 3. ¿Es una letra conocida (n, h, l)?
+            if val_str in mapa_niveles:
+                return float(mapa_niveles[val_str])
+            
+            # 4. ¿Es un número guardado como string (ej: "85")?
+            try:
+                return float(val_str)
+            except ValueError:
+                return 0.0 # Si es algo raro, riesgo bajo por defecto
+
+        # Aplicamos la función fila por fila
+        df['confidence'] = df['confidence'].apply(sanitizar_confianza)
         
-        # 3. Convertir a string, limpiar espacios, pasar a minúsculas y mapear
-        if df['confidence'].dtype == 'object':
-            # Si el valor es una de las palabras del mapa, lo cambiamos a número
-            # Si ya es un número en formato texto (ej: "85"), to_numeric lo arregla
-            df['confidence'] = pd.to_numeric(df['confidence'], errors='coerce').fillna(
-                df['confidence'].str.lower().str.strip().map(mapa_texto)
-            )
+        # Ahora que son todos floats, aseguramos el tipo y filtramos
+        df['confidence'] = df['confidence'].astype(float)
         
-        # 4. Por seguridad, llenar cualquier valor nulo con un valor bajo
-        df['confidence'] = df['confidence'].fillna(0).astype(int)
-        
-        # 5. Ahora sí, la comparación numérica segura
         return df[df['confidence'] >= minima].copy()
 
     def crear_mapa_interactivo(self, df, nombre='mapa_incendios_historico.html'):
