@@ -1,0 +1,8 @@
+flask
+requests
+pandas
+folium
+plotly
+numpy
+openpyxl
+gunicorn
