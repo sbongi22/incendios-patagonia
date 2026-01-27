@@ -6,6 +6,7 @@ from folium.plugins import HeatMap, MarkerCluster
 from datetime import datetime, timedelta
 import numpy as np
 from io import StringIO
+import time
 from flask import Flask, render_template, send_file
 
 # ==========================================
@@ -14,7 +15,7 @@ from flask import Flask, render_template, send_file
 class AnalizadorIncendiosHistorico:
     def __init__(self, map_key):
         self.map_key = map_key
-        self.zona_bounds = "-72.5,-47,-69,-42" # Patagonia
+        self.zona_bounds = "-72.5,-47,-69,-42"
         self.fecha_inicio_incendios = datetime(2026, 1, 1)
         self.openmeteo_url = "https://api.open-meteo.com/v1/forecast"
 
@@ -25,7 +26,7 @@ class AnalizadorIncendiosHistorico:
                 'hourly': 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation',
                 'past_days': 7, 'forecast_days': 0, 'timezone': 'auto'
             }
-            response = requests.get(self.openmeteo_url, params=params, timeout=10)
+            response = requests.get(self.openmeteo_url, params=params, timeout=8)
             data = response.json()
             hourly = data['hourly']
             last_idx = len(hourly['time']) - 1
@@ -78,7 +79,7 @@ class AnalizadorIncendiosHistorico:
             dias = min(5, (fecha_fin - fecha_actual).days + 1)
             url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{self.map_key}/{fuente}/{self.zona_bounds}/{dias}/{fecha_actual.strftime('%Y-%m-%d')}"
             try:
-                res = requests.get(url, timeout=30)
+                res = requests.get(url, timeout=20)
                 if res.status_code == 200 and "latitude" in res.text:
                     todos_los_datos.append(pd.read_csv(StringIO(res.text)))
             except Exception: pass
@@ -104,12 +105,15 @@ class AnalizadorIncendiosHistorico:
             except ValueError: return 0.0
 
         df['confidence'] = df['confidence'].apply(sanitizar_confianza).astype(float)
-        return df[df['confidence'] >= minima].copy()
+        df = df[df['confidence'] >= minima].copy()
+        
+        # OPTIMIZACIÓN DE MEMORIA: Máximo 300 puntos para el mapa
+        if len(df) > 300:
+            df = df.nlargest(300, 'frp')
+        return df
 
     def agregar_informacion_temporal(self, df):
         df['acq_date'] = pd.to_datetime(df['acq_date'])
-        df['semana'] = df['acq_date'].dt.isocalendar().week
-        df['mes'] = df['acq_date'].dt.month
         return df
 
     def crear_mapa_interactivo(self, df, nombre='mapa_incendios_historico.html'):
@@ -126,12 +130,19 @@ class AnalizadorIncendiosHistorico:
         mapa.save(nombre)
 
     def generar_reporte_web(self):
+        # OPTIMIZACIÓN CACHÉ: 10 minutos para evitar Timeouts seguidos
+        archivo_mapa = 'mapa_incendios_historico.html'
+        if os.path.exists(archivo_mapa):
+            if time.time() - os.path.getmtime(archivo_mapa) < 600:
+                return {'total_focos': 'Actualizado', 'riesgo_promedio': 'Ver mapa', 'temp_promedio': '--', 'humedad_promedio': '--'}
+
         df = self.obtener_datos_actualizados()
         if df is None or len(df) == 0: return None
         df = self.filtrar_por_confianza(df)
         df = self.agregar_informacion_temporal(df)
         df = self.agregar_datos_meteorologicos_rapido(df)
         self.crear_mapa_interactivo(df)
+        
         return {
             'total_focos': len(df),
             'riesgo_promedio': round(df['indice_riesgo'].mean(), 1),
