@@ -10,10 +10,11 @@
     <div class="container mx-auto px-4 py-8">
         <div class="flex justify-between items-end border-b border-slate-700 pb-6 mb-8">
             <div>
-                <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600">
-                    SISTEMA DE ALERTA TEMPRANA
+                <h1 id="titulo" class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600">
+                    INCENDIOS - PATAGONIA ARGENTINA
                 </h1>
-                <p class="text-slate-400 mt-2"><i class="fas fa-satellite"></i> Datos de NASA FIRMS actualizados a las 06:00 AM</p>
+                <p class="text-slate-400 mt-2"><i class="fas fa-satellite"></i>Datos de NASA FIRMS y Open-Meteo</p>
+                <p id="actualizacion" class="text-slate-400 mt-2"></p>
             </div>
             <a href="/descargar" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20">
                 <i class="fas fa-file-excel"></i> Descargar Reporte Detallado
@@ -50,5 +51,20 @@
             <iframe src="/mapa_embed" class="w-full h-[600px]" onload="document.getElementById('loader').style.display='none'"></iframe>
         </div>
     </div>
+
+    <script>
+        const hoy = new Date();
+
+        const opciones = {
+            day: 'numeric',
+            month: 'long'
+        };
+
+        const fecha = hoy.toLocaleDateString('es-AR', opciones);
+
+        document.getElementById("actualizacion").innerHTML =
+            `Última Actualización: ${fecha} 06:00 AM`;
+    </script>
+
 </body>
 </html>
