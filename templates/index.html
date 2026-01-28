@@ -2,51 +2,53 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor de Incendios Patagonia</title>
+    <title>Dashboard Incendios Patagonia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="bg-slate-50 font-sans text-gray-900">
+<body class="bg-slate-900 text-white font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-end border-b border-slate-700 pb-6 mb-8">
+            <div>
+                <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600">
+                    SISTEMA DE ALERTA TEMPRANA
+                </h1>
+                <p class="text-slate-400 mt-2"><i class="fas fa-satellite"></i> Datos de NASA FIRMS actualizados a las 06:00 AM</p>
+            </div>
+            <a href="/descargar" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20">
+                <i class="fas fa-file-excel"></i> Descargar Reporte Detallado
+            </a>
+        </div>
 
-    <header class="bg-red-700 text-white p-6 shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold italic"><i class="fas fa-fire-alt mr-2"></i> PatagoniaFire Watch</h1>
-            <span class="text-sm bg-red-800 px-3 py-1 rounded-full">Datos en Tiempo Real</span>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-orange-500 transition-colors">
+                <div class="text-orange-500 mb-2"><i class="fas fa-fire-alt fa-2x"></i></div>
+                <div class="text-slate-400 text-sm font-semibold uppercase">Total Focos</div>
+                <div class="text-3xl font-bold">{{ stats.total_focos }}</div>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-red-500 transition-colors">
+                <div class="text-red-500 mb-2"><i class="fas fa-biohazard fa-2x"></i></div>
+                <div class="text-slate-400 text-sm font-semibold uppercase">Riesgo Predominante</div>
+                <div class="text-3xl font-bold">{{ stats.riesgo_avg }}</div>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-yellow-500 transition-colors">
+                <div class="text-yellow-500 mb-2"><i class="fas fa-bolt fa-2x"></i></div>
+                <div class="text-slate-400 text-sm font-semibold uppercase">Intensidad Máxima (FRP)</div>
+                <div class="text-3xl font-bold">{{ stats.intensidad_max }}</div>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-blue-500 transition-colors">
+                <div class="text-blue-500 mb-2"><i class="fas fa-map-marked-alt fa-2x"></i></div>
+                <div class="text-slate-400 text-sm font-semibold uppercase">Zona de Mayor Alerta</div>
+                <div class="text-3xl font-bold text-lg">{{ stats.area_critica }}</div>
+            </div>
         </div>
-    </header>
 
-<main class="container mx-auto py-8 px-4">
-    {% if stats %}
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-orange-500">
-            <p class="text-gray-500 text-sm uppercase font-bold">Total Focos</p>
-            <h2 class="text-3xl font-black">{{ stats.total_focos }}</h2>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-600">
-            <p class="text-gray-500 text-sm uppercase font-bold">Riesgo Promedio</p>
-            <h2 class="text-3xl font-black text-red-600">{{ stats.riesgo_promedio }}/100</h2>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-400">
-            <p class="text-gray-500 text-sm uppercase font-bold">Humedad Prom.</p>
-            <h2 class="text-3xl font-black text-blue-600">{{ stats.humedad_promedio }}%</h2>
-        </div>
-        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-500">
-            <p class="text-gray-500 text-sm uppercase font-bold">Temp. Promedio</p>
-            <h2 class="text-3xl font-black italic">{{ stats.temp_promedio }}°C</h2>
+        <div class="bg-slate-800 rounded-3xl overflow-hidden shadow-2xl border border-slate-700 relative">
+            <div id="loader" class="absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-orange-500"></div>
+            </div>
+            <iframe src="/mapa" class="w-full h-[600px]" onload="document.getElementById('loader').style.display='none'"></iframe>
         </div>
     </div>
-    {% else %}
-    <div class="bg-yellow-100 p-10 text-center rounded-xl">
-        <h2 class="text-xl font-bold">Cargando datos de la NASA...</h2>
-        <p>Esto puede tardar unos segundos en el plan gratuito de Render.</p>
-    </div>
-    {% endif %}
-
-    <div class="bg-white p-4 rounded-2xl shadow-md h-[600px] mb-8">
-        <h3 class="text-lg font-bold mb-4"><i class="fas fa-map-marked-alt mr-2 text-red-600"></i> Mapa de Calor y Riesgo</h3>
-        <iframe src="/mapa" class="w-full h-[500px] rounded-lg border"></iframe>
-    </div>
-</main>
 </body>
 </html>
