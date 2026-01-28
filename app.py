@@ -1,75 +1,58 @@
-import os, requests, pandas as pd, folium, numpy as np, json
-from folium.plugins import HeatMap, MarkerCluster
-from datetime import datetime, timedelta
-from io import StringIO
+import os, json, requests
+import pandas as pd
 from flask import Flask, render_template, send_file
+from datetime import datetime
+from io import StringIO
 
 app = Flask(__name__)
 
-class AnalizadorPro:
-    def __init__(self):
-        self.map_key = os.environ.get("MAP_KEY", "a66ff23e6b0f370791cb4bd2dd3123d0")
-        self.zona = "-72.5,-47,-69,-42"
-        self.excel_path = "static/detalle_incendios.xlsx"
-        self.stats_path = "static/stats.json"
-        self.map_path = "templates/mapa_base.html"
+# Configuramos las rutas absolutas para evitar el "Internal Server Error"
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
+STATS_FILE = os.path.join(STATIC_DIR, 'stats.json')
+EXCEL_FILE = os.path.join(STATIC_DIR, 'detalle_incendios.xlsx')
+MAP_FILE = os.path.join(STATIC_DIR, 'mapa_generado.html')
 
-    def procesar_actualizacion_diaria(self):
-        """Función que corre a las 6 AM"""
-        # 1. Obtener datos de la NASA
-        url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{self.map_key}/VIIRS_SNPP_NRT/{self.zona}/10"
-        res = requests.get(url)
-        if res.status_code != 200: return
-        
-        df = pd.read_csv(StringIO(res.text))
-        
-        # Limpieza de confianza (basado en errores previos)
-        df['confidence'] = pd.to_numeric(df['confidence'], errors='coerce').fillna(50)
-        df = df[df['confidence'] >= 70].copy()
-
-        # 2. Generar Estadísticas Relevantes
-        stats = {
-            "total_focos": len(df),
-            "riesgo_avg": "ALTO" if df['frp'].mean() > 40 else "MODERADO",
-            "intensidad_max": round(df['frp'].max(), 1),
-            "area_critica": "Chubut/Río Negro", # Simplificado para el ejemplo
-            "ultima_actualizacion": datetime.now().strftime("%d/%m/%Y %H:%M")
-        }
-        
-        # 3. Guardar el Excel detallado (estilo incendios_v2)
-        with pd.ExcelWriter(self.excel_path) as writer:
-            df.to_excel(writer, sheet_name='Detalle Completo')
-            df.describe().to_excel(writer, sheet_name='Resumen Estadístico')
-
-        # 4. Guardar JSON para el Dashboard
-        with open(self.stats_path, 'w') as f:
-            json.dump(stats, f)
-
-        # 5. Generar Mapa
-        m = folium.Map(location=[-44.5, -71], zoom_start=7, tiles="cartodb dark_matter")
-        HeatMap(df[['latitude', 'longitude']].values).add_to(m)
-        m.save(self.map_path)
-
-analizador = AnalizadorPro()
+# Aseguramos que la carpeta static existe
+if not os.path.exists(STATIC_DIR):
+    os.makedirs(STATIC_DIR)
 
 @app.route('/')
 def index():
-    # Leer stats del archivo JSON generado a las 6 AM
-    try:
-        with open('static/stats.json', 'r') as f:
-            data_stats = json.load(f)
-    except:
-        data_stats = {"total_focos": "0", "riesgo_avg": "---", "intensidad_max": "0", "area_critica": "N/A", "ultima_actualizacion": "Pendiente"}
+    # Intentamos leer los datos generados a las 6 AM
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, 'r') as f:
+                stats = json.load(f)
+        except:
+            stats = None
+    else:
+        stats = None
+
+    # Si no hay datos (o el archivo no existe), pasamos valores por defecto
+    if not stats:
+        stats = {
+            "total_focos": "Pendiente",
+            "riesgo_avg": "Procesando",
+            "intensidad_max": "---",
+            "area_critica": "Patagonia",
+            "ultima_actualizacion": "A las 06:00 AM"
+        }
     
-    return render_template('index.html', stats=data_stats)
+    return render_template('index.html', stats=stats)
+
+@app.route('/mapa_embed')
+def mapa_embed():
+    # Esta es la ruta que llama tu iframe en index.html
+    if os.path.exists(MAP_FILE):
+        return send_file(MAP_FILE)
+    return "<h3>El mapa se está procesando. Estará disponible tras la actualización de las 06:00 AM.</h3>"
 
 @app.route('/descargar')
 def descargar():
-    return send_file(analizador.excel_path, as_attachment=True)
-
-@app.route('/mapa')
-def mapa():
-    return send_file(analizador.map_path)
+    if os.path.exists(EXCEL_FILE):
+        return send_file(EXCEL_FILE, as_attachment=True)
+    return "El archivo Excel se está generando.", 404
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
