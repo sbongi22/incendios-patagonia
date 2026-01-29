@@ -480,15 +480,14 @@ class AnalizadorIncendiosHistorico:
     def crear_graficos_evolucion(self, evolucion, nombre_archivo='evolucion_historica.html'):
         """Crea gráficos de evolución temporal"""
         fig = make_subplots(
-            rows=4, cols=1,
+            rows=3, cols=1,
             subplot_titles=(
                 '🔥 Focos detectados por día',
                 '📈 Focos acumulados en el tiempo',
                 '📏 Superficie estimada afectada (hectáreas)',
-                '⚡ Intensidad promedio del fuego (FRP)'
             ),
-            vertical_spacing=0.08,
-            row_heights=[0.25, 0.25, 0.25, 0.25]
+            vertical_spacing=0.01,
+            row_heights=[0.33, 0.33, 0.34]
         )
         
         # Gráfico 1: Focos diarios
@@ -531,30 +530,15 @@ class AnalizadorIncendiosHistorico:
             ),
             row=3, col=1
         )
-        
-        # Gráfico 4: FRP
-        fig.add_trace(
-            go.Scatter(
-                x=evolucion['acq_date'],
-                y=evolucion['frp_promedio'],
-                name='FRP promedio',
-                mode='lines+markers',
-                line=dict(color='orange', width=2),
-                marker=dict(size=6),
-                hovertemplate='<b>%{x|%d/%m/%Y}</b><br>%{y:.1f} MW<extra></extra>'
-            ),
-            row=4, col=1
-        )
-        
+                
         # Layout
-        fig.update_xaxes(title_text="Fecha", row=4, col=1)
+        fig.update_xaxes(title_text="Fecha", row=3, col=1)
         fig.update_yaxes(title_text="Cantidad", row=1, col=1)
         fig.update_yaxes(title_text="Focos totales", row=2, col=1)
         fig.update_yaxes(title_text="Hectáreas", row=3, col=1)
-        fig.update_yaxes(title_text="MW", row=4, col=1)
         
         fig.update_layout(
-            height=1200,
+            height=900,
             title_text=f"<b>📊 Evolución de Incendios Patagonia Argentina - Del 1/01/2026 al {datetime.now().strftime('%d/%m/%Y')}</b>",
             title_font_size=18,
             showlegend=False,
