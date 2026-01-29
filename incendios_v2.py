@@ -327,30 +327,33 @@ class AnalizadorIncendiosHistorico:
     
     def filtrar_por_confianza(self, df, confianza_minima=70):
         """Filtra detecciones por nivel de confianza"""
-        
-        # Convertir confidence a numérico si viene como texto
-        if df['confidence'].dtype == 'object':
-            # Mapear valores textuales a numéricos
-            confidence_map = {
-                'low': 30,
-                'nominal': 60,
-                'high': 90,
-                'l': 30,
-                'n': 60,
-                'h': 90
-            }
+        if df is None or len(df) == 0:
+            return df
             
-            # Intentar convertir, si falla usar el mapeo
-            def convertir_confidence(val):
-                try:
-                    return float(val)
-                except:
-                    return confidence_map.get(str(val).lower(), 50)
-            
-            df['confidence'] = df['confidence'].apply(convertir_confidence)
+        # 1. Mapear valores textuales a numéricos
+        confidence_map = {
+            'low': 30, 'nominal': 60, 'high': 90,
+            'l': 30, 'n': 60, 'h': 90
+        }
         
+        def convertir_confidence(val):
+            try:
+                # Intentamos convertir directamente a número
+                return float(val)
+            except (ValueError, TypeError):
+                # Si es texto (como 'high'), buscamos en el mapa
+                return confidence_map.get(str(val).lower(), 50)
+        
+        # 2. Aplicar la conversión y FORZAR tipo flotante
+        df['confidence'] = df['confidence'].apply(convertir_confidence).astype(float)
+        
+        # 3. Filtrado final (Ahora sí comparamos número vs número)
         df_filtrado = df[df['confidence'] >= confianza_minima].copy()
-        print(f"\n📊 Filtrado por confianza >={confianza_minima}%: {len(df_filtrado)} de {len(df)} detecciones ({len(df_filtrado)/len(df)*100:.1f}%)")
+        
+        if len(df) > 0:
+            porcentaje = (len(df_filtrado) / len(df)) * 100
+            print(f"\n📊 Filtrado por confianza >={confianza_minima}%: {len(df_filtrado)} de {len(df)} detecciones ({porcentaje:.1f}%)")
+        
         return df_filtrado
     
     def agregar_informacion_temporal(self, df):
