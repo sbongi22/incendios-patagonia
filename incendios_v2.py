@@ -561,11 +561,13 @@ class AnalizadorIncendiosHistorico:
         
         return fig
     
-    def exportar_excel_completo(self, df, evolucion):
+    def exportar_excel_completo(self, df, evolucion, nombre_archivo=None):
         """Exporta TODO en un solo archivo Excel con múltiples pestañas"""
         print("\n📂 Generando archivo Excel completo...")
         
-        nombre_archivo = f'analisis_incendios_completo_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+        if nombre_archivo is None:
+            fecha_str = datetime.now().strftime("%Y%m%d_%H%M")
+            nombre_archivo = f'analisis_incendios_completo_{fecha_str}.xlsx'
         
         try:
             # Crear archivo Excel
@@ -769,11 +771,11 @@ class AnalizadorIncendiosHistorico:
         
         # 6. Crear visualizaciones
         print("\n🎨 Generando visualizaciones...")
-        self.crear_mapa_interactivo(df_filtrado)
-        self.crear_graficos_evolucion(evolucion)
+        #self.crear_mapa_interactivo(df_filtrado)
+        #self.crear_graficos_evolucion(evolucion)
         
         # 7. Exportar Excel completo
-        archivo_excel = self.exportar_excel_completo(df_filtrado, evolucion)
+        archivo_excel = None
         
         # 8. Resumen final
         print("\n" + "="*70)
@@ -807,7 +809,7 @@ class AnalizadorIncendiosHistorico:
         print("\n📂 ARCHIVOS GENERADOS:")
         print("   🗺️  mapa_incendios_historico.html - Mapa interactivo con riesgo")
         print("   📊 evolucion_historica.html - Gráficos de evolución")
-        if archivo_excel:
+        if archivo_excel: 
             print(f"   📗 {archivo_excel} - Excel con 6 pestañas incluyendo:")
             print("      • Detalle - Con datos meteorológicos completos")
             print("      • Resumen Meteorológico - Estadísticas de clima")
@@ -832,15 +834,44 @@ class AnalizadorIncendiosHistorico:
 # EJECUTAR ANÁLISIS
 # ============================================================
 if __name__ == "__main__":
+    import os
+    from supabase import create_client
     
-    # Tu API key de NASA FIRMS
-    MAP_KEY = "a66ff23e6b0f370791cb4bd2dd3123d0"
-    
-    # Crear analizador
+    MAP_KEY = os.environ.get("MAP_KEY", "a66ff23e6b0f370791cb4bd2dd3123d0")
+    SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://sglrflawktvymwujppqt.supabase.co")
+    SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNnbHJmbGF3a3R2eW13dWpwcHF0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2NDIxNzksImV4cCI6MjA4NTIxODE3OX0.tDVdjdmV1FDe-SjpusA_KdWM4BLEIHE6FbfePMjz7qY")
+
     analizador = AnalizadorIncendiosHistorico(MAP_KEY)
     
-    # Generar reporte completo
-    resultados = analizador.generar_reporte_completo(confianza_minima=70)
+    # 1. Generar reporte
+    resultados = analizador.generar_reporte_completo()
+    df = resultados['datos']
+    evolucion = resultados['evolucion']
     
-    print("\n✅ ¡Proceso completado!")
-    print("🔄 Ejecuta este script nuevamente mañana para actualizar con los datos más recientes")
+    # 2. GUARDAR EN STATIC (Nombres fijos para que app.py los encuentre)
+    print("Generando archivos en carpeta static...")
+    analizador.crear_mapa_interactivo(df, nombre_archivo='static/mapa_generado.html')
+    analizador.crear_graficos_evolucion(evolucion, nombre_archivo='static/evolucion_historica.html')
+    
+    # Forzamos el nombre exacto que espera app.py
+    analizador.exportar_excel_completo(df, evolucion, nombre_archivo='static/detalle_incendios.xlsx')
+    
+    # 3. ACTUALIZAR SUPABASE
+    try:
+        sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+        total = len(df)
+        intensidad = df['frp'].max() if not df.empty else 0
+        riesgo = df['nivel_riesgo'].mode()[0] if not df.empty else "N/A"
+
+        nuevos_stats = {
+            "id": 1,
+            "total_focos": str(total),
+            "riesgo_avg": riesgo,
+            "intensidad_max": f"{intensidad:.1f}",
+            "area_critica": "Patagonia",
+            "ultima_actualizacion": datetime.now().strftime("%d/%m/%Y %H:%M")
+        }
+        sb.table("stats").upsert(nuevos_stats).execute()
+        print("\n🚀 ¡ÉXITO! Todo en /static y Supabase actualizado.")
+    except Exception as e:
+        print(f"❌ Error Supabase: {e}")
