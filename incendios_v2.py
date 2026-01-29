@@ -332,7 +332,7 @@ class AnalizadorIncendiosHistorico:
             
         # 1. Mapear valores textuales a numéricos
         confidence_map = {
-            'low': 30, 'nominal': 60, 'high': 90,
+            'low': 30, 'nominal': 75, 'high': 90,
             'l': 30, 'n': 60, 'h': 90
         }
         
