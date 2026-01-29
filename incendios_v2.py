@@ -866,7 +866,13 @@ if __name__ == "__main__":
     try:
         sb = create_client(SUPABASE_URL, SUPABASE_KEY)
         total = len(df)
-        intensidad = df['frp'].max() if not df.empty else 0
+        
+        # CALCULOS NUEVOS
+        # Obtenemos la última fila de la evolución para tener el total de hectáreas
+        superficie_total = evolucion['superficie_estimada_ha'].iloc[-1] if not evolucion.empty else 0
+        # Calculamos el promedio de FRP
+        frp_promedio = df['frp'].mean() if not df.empty else 0
+        
         riesgo = df['nivel_riesgo'].mode()[0] if not df.empty else "N/A"
 
         ahora_argentina = datetime.now() - timedelta(hours=3)
@@ -876,11 +882,13 @@ if __name__ == "__main__":
             "id": 1,
             "total_focos": str(total),
             "riesgo_avg": riesgo,
-            "intensidad_max": f"{intensidad:.1f}",
-            "area_critica": "Patagonia",
+            "intensidad_max": f"{frp_promedio:.1f} MW",     # Reemplazado por Promedio + MW
+            "area_critica": f"{superficie_total:,.0f} ha",  # Reemplazado por Suma de Hectáreas
             "ultima_actualizacion": fecha_dashboard
         }
+        
         sb.table("stats").upsert(nuevos_stats).execute()
-        print("\n🚀 ¡ÉXITO! Todo en /static y Supabase actualizado.")
+        print("\n🚀 ¡Métricas actualizadas! Hectáreas y FRP promedio enviados.")
+        
     except Exception as e:
         print(f"❌ Error Supabase: {e}")
