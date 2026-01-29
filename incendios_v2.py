@@ -486,7 +486,7 @@ class AnalizadorIncendiosHistorico:
                 '📈 Focos acumulados en el tiempo',
                 '📏 Superficie estimada afectada (hectáreas)',
             ),
-            vertical_spacing=0.01,
+            vertical_spacing=0.08,
             row_heights=[0.33, 0.33, 0.34]
         )
         
