@@ -1,6 +1,8 @@
 import os
 from flask import Flask, render_template, send_file
 from supabase import create_client
+from datetime import datetime, timedelta
+
 
 app = Flask(__name__)
 
@@ -41,6 +43,48 @@ def descargar():
     if os.path.exists(excel_path):
         return send_file(excel_path, as_attachment=True)
     return "Archivo no encontrado", 404
+
+@app.route('/update_dashboard_secreto')
+def update():
+    try:
+        from incendios_v2 import AnalizadorIncendiosHistorico
+        
+        # 1. Configuración
+        MAP_KEY = os.environ.get("MAP_KEY", "a66ff23e6b0f370791cb4bd2dd3123d0")
+        analizador = AnalizadorIncendiosHistorico(MAP_KEY)
+        
+        # 2. Ejecutar el motor
+        resultados = analizador.generar_reporte_completo()
+        df = resultados['datos']
+        evolucion = resultados['evolucion']
+        
+        # 3. Guardar archivos en static
+        analizador.crear_mapa_interactivo(df, nombre_archivo='static/mapa_generado.html')
+        analizador.crear_graficos_evolucion(evolucion, nombre_archivo='static/evolucion_historica.html')
+        analizador.exportar_excel_completo(df, evolucion, nombre_archivo='static/detalle_incendios.xlsx')
+        
+        # 4. Actualizar Supabase (Reutilizamos la conexión de app.py)
+        total = len(df)
+        intensidad = df['frp'].max() if not df.empty else 0
+        riesgo = df['nivel_riesgo'].mode()[0] if not df.empty else "N/A"
+        
+        ahora_argentina = datetime.now() - timedelta(hours=3)
+        fecha_dashboard = ahora_argentina.strftime("%d/%m/%Y %H:%M")
+
+        nuevos_stats = {
+            "id": 1,
+            "total_focos": str(total),
+            "riesgo_avg": riesgo,
+            "intensidad_max": f"{intensidad:.1f}",
+            "area_critica": "Patagonia",
+            "ultima_actualizacion": fecha_dashboard
+        }
+        
+        supabase.table("stats").upsert(nuevos_stats).execute()
+        
+        return "<h1>🚀 Dashboard actualizado con éxito</h1><p>Podés volver al <a href='/'>inicio</a>.</p>"
+    except Exception as e:
+        return f"<h1>❌ Error</h1><p>{str(e)}</p>"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
