@@ -44,7 +44,7 @@ def descargar():
         return send_file(excel_path, as_attachment=True)
     return "Archivo no encontrado", 404
 
-@app.route('/update_dashboard_secreto')
+@app.route('/update_dashboard')
 def update():
     try:
         from incendios_v2 import AnalizadorIncendiosHistorico
