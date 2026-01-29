@@ -19,30 +19,21 @@ class AnalizadorIncendiosHistorico:
     
     def obtener_datos_meteorologicos(self, lat, lon):
         try:
-            params = {
-                'latitude': lat, 'longitude': lon,
-                'hourly': 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation',
-                'past_days': 7, 'forecast_days': 0, 'timezone': 'auto'
-            }
+            params = {'latitude': lat, 'longitude': lon, 'hourly': 'temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation', 'past_days': 7, 'forecast_days': 0, 'timezone': 'auto'}
             response = requests.get(self.openmeteo_url, params=params, timeout=10)
             data = response.json()
             hourly = data['hourly']
             last_idx = len(hourly['time']) - 1
-            viento_kmh = hourly['wind_speed_10m'][last_idx] * 3.6
-            humedad = hourly['relative_humidity_2m'][last_idx]
-            temperatura = hourly['temperature_2m'][last_idx]
-            precipitacion_total = sum(hourly['precipitation'][:last_idx+1])
             return {
-                'viento_kmh': round(viento_kmh, 1),
-                'humedad_relativa': round(humedad, 1),
-                'temperatura_c': round(temperatura, 1),
-                'lluvia_7d_mm': round(precipitacion_total, 1)
+                'viento_kmh': round(hourly['wind_speed_10m'][last_idx] * 3.6, 1),
+                'humedad_relativa': round(hourly['relative_humidity_2m'][last_idx], 1),
+                'temperatura_c': round(hourly['temperature_2m'][last_idx], 1),
+                'lluvia_7d_mm': round(sum(hourly['precipitation'][:last_idx+1]), 1)
             }
-        except Exception:
-            return {'viento_kmh': 10.0, 'humedad_relativa': 50.0, 'temperatura_c': 20.0, 'lluvia_7d_mm': 0.0}
+        except: return {'viento_kmh': 10.0, 'humedad_relativa': 50.0, 'temperatura_c': 20.0, 'lluvia_7d_mm': 0.0}
 
     def calcular_riesgo_fwi(self, viento, humedad, lluvia, temperatura):
-        # REGLA 30-30-30
+        # REGLA 30-30-30 Profesional
         if temperatura >= 30 and humedad <= 30 and viento >= 30:
             return 100.0
         viento_norm = min(viento / 50, 1.0)
@@ -96,13 +87,19 @@ class AnalizadorIncendiosHistorico:
                 r = requests.get(url, timeout=30)
                 if r.status_code == 200 and "latitude" in r.text:
                     todos_los_datos.append(pd.read_csv(StringIO(r.text)))
-            except Exception: pass
+                time.sleep(0.5)
+            except: pass
             fecha_actual += timedelta(days=dias_bloque)
-        return pd.concat(todos_los_datos).drop_duplicates(subset=['latitude', 'longitude', 'acq_date', 'acq_time']) if todos_los_datos else None
+        if todos_los_datos:
+            df = pd.concat(todos_los_datos, ignore_index=True)
+            df = df.drop_duplicates(subset=['latitude', 'longitude', 'acq_date', 'acq_time'])
+            return df
+        return None
 
     def obtener_datos_actualizados(self, fuente="VIIRS_SNPP_NRT"):
         df = self.obtener_datos_rango_fechas(self.fecha_inicio_incendios, datetime.now(), fuente)
         if df is not None:
+            # FILTRO PATAGONIA ARGENTINA ORIGINAL
             df = df[df['longitude'] > -72.2].copy()
             df['acq_date'] = pd.to_datetime(df['acq_date'])
         return df
@@ -121,7 +118,7 @@ class AnalizadorIncendiosHistorico:
         return evo
 
     def crear_mapa_interactivo(self, df, nombre_archivo='static/mapa_generado.html'):
-        mapa = folium.Map(location=[df['latitude'].mean(), df['longitude'].mean()], zoom_start=6)
+        mapa = folium.Map(location=[df['latitude'].mean(), df['longitude'].mean()], zoom_start=7)
         HeatMap(df[['latitude', 'longitude', 'frp']].values.tolist(), radius=15).add_to(mapa)
         mc = MarkerCluster().add_to(mapa)
         colores = {"BAJO": "green", "MODERADO": "lightgreen", "ALTO": "orange", "MUY ALTO": "red", "EXTREMO": "purple", "EXTREMO (30-30-30)": "black"}
@@ -130,6 +127,7 @@ class AnalizadorIncendiosHistorico:
         
         leyenda = f'''<div style="position: fixed; bottom: 50px; right: 50px; width: 280px; background: white; border:2px solid grey; z-index:9999; padding: 10px; border-radius: 5px;">
         <b>🔥 Riesgo Incendios</b><br>
+        <p>Del 1/1/2026 al {datetime.now().strftime('%d/%m/%Y')}</p>
         <span style="color:black;">●</span> 🚨 CRÍTICO (30-30-30)<br>
         <span style="color:purple;">●</span> EXTREMO<br>
         <span style="color:red;">●</span> MUY ALTO<br>
@@ -140,24 +138,39 @@ class AnalizadorIncendiosHistorico:
         mapa.save(nombre_archivo)
 
     def crear_graficos_evolucion(self, evo, nombre_archivo='static/evolucion_historica.html'):
-        fig = make_subplots(rows=3, cols=1, subplot_titles=('Focos por día', 'Focos acumulados', 'Hectáreas estimadas'))
-        fig.add_trace(go.Bar(x=evo['acq_date'], y=evo['focos_nuevos'], marker_color='orangered'), row=1, col=1)
+        # SOLO 3 GRAFICOS (Sin FRP promedio)
+        fig = make_subplots(rows=3, cols=1, subplot_titles=('🔥 Focos detectados por día', '📈 Focos acumulados', '📏 Superficie estimada (ha)'), vertical_spacing=0.1)
+        fig.add_trace(go.Bar(x=evo['acq_date'], y=evo['focos_new'], marker_color='orangered'), row=1, col=1)
         fig.add_trace(go.Scatter(x=evo['acq_date'], y=evo['focos_acumulados'], fill='tozeroy'), row=2, col=1)
         fig.add_trace(go.Scatter(x=evo['acq_date'], y=evo['superficie_estimada_ha'], line=dict(color='darkred')), row=3, col=1)
         fig.update_layout(height=900, template="plotly_white", showlegend=False)
         fig.write_html(nombre_archivo)
 
-    def exportar_excel_completo(self, df, evo, nombre_archivo):
-        with pd.ExcelWriter(nombre_archivo) as writer:
+    def exportar_excel_completo(self, df, evolucion, nombre_archivo):
+        # RESTAURADAS LAS 6 PESTAÑAS ORIGINALES
+        with pd.ExcelWriter(nombre_archivo, engine='openpyxl') as writer:
+            # 1. Detalle
             df.to_excel(writer, sheet_name='Detalle', index=False)
-            evo.to_excel(writer, sheet_name='Evolucion', index=False)
+            # 2. Evolución
+            evolucion.to_excel(writer, sheet_name='Evolución Diaria', index=False)
+            # 3. Semanal
+            df['semana'] = df['acq_date'].dt.isocalendar().week
+            semanal = df.groupby('semana').agg({'latitude': 'count', 'frp': 'mean'}).reset_index()
+            semanal.to_excel(writer, sheet_name='Resumen Semanal', index=False)
+            # 4. Top 10
+            top10 = evolucion.nlargest(10, 'focos_nuevos')
+            top10.to_excel(writer, sheet_name='Top 10 Días', index=False)
+            # 5. Meteo
+            meteo_res = pd.DataFrame([{'Viento Avg': df['viento_kmh'].mean(), 'Temp Avg': df['temperatura_c'].mean()}])
+            meteo_res.to_excel(writer, sheet_name='Resumen Meteorológico', index=False)
+            # 6. General
+            general = pd.DataFrame([{'Total Focos': len(df), 'Hectáreas': evolucion['superficie_estimada_ha'].iloc[-1]}])
+            general.to_excel(writer, sheet_name='Resumen General', index=False)
 
-    def generar_reporte_completo(self):
+    def generar_reporte_completo(self, confianza_minima=70):
         df = self.obtener_datos_actualizados()
         if df is None: return None
-        df = self.filtrar_por_confianza(df)
-        df['año'] = df['acq_date'].dt.year
-        df['semana'] = df['acq_date'].dt.isocalendar().week
+        df = self.filtrar_por_confianza(df, confianza_minima)
         df = self.agregar_datos_meteorologicos_rapido(df)
         evo = self.analizar_evolucion_diaria(df)
         return {'datos': df, 'evolucion': evo}
@@ -176,9 +189,8 @@ if __name__ == "__main__":
         analizador.crear_graficos_evolucion(evo)
         analizador.exportar_excel_completo(df, evo, 'static/detalle_incendios.xlsx')
         
-        # Lógica de Supabase profesional
-        supa = create_client(SB_URL, SB_KEY)
-        supa.table("stats").upsert({
+        sb = create_client(SB_URL, SB_KEY)
+        sb.table("stats").upsert({
             "id": 1,
             "total_focos": str(len(df)),
             "riesgo_avg": df['nivel_riesgo'].mode()[0],
