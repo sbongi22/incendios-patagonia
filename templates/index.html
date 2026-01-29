@@ -2,48 +2,64 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Monitoreo Patagonia</title>
+    <title>Monitoreo Incendios Patagonia</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.png') }}"></head>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="bg-slate-900 text-white font-sans">
     <div class="container mx-auto px-4 py-8">
-        <header class="mb-10 text-center">
-            <h1 class="text-4xl font-extrabold text-orange-500 mb-2">🔥 Dashboard Incendios Patagonia</h1>
-            <p class="text-slate-400">Actualizado: {{ stats.ultima_actualizacion }}</p>
-        </header>
+        <div class="flex justify-between items-end border-b border-slate-700 pb-6 mb-8">
+            <div>
+                <h1 id="titulo" class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600">
+                    Incendios - Patagonia Argentina
+                </h1>
+                <p class="text-slate-400 mt-2"><i class="fas fa-satellite"></i>Datos de NASA FIRMS y Open-Meteo</p>
+                <p class="text-slate-400 mt-2" id="actualizacion">Última Actualización: <strong>{{ stats.ultima_actualizacion }}</strong></p>
+                <p class="text-slate-400 mt-2" style="font-size: 0.7rem;">* Los datos satelitales pueden presentar un desfase de 24 a 48 hs debido a los tiempos de procesamiento de la NASA (FIRMS) y validación de confianza.</p>
+            </div>
+            <a href="/descargar" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20">
+                <i class="fas fa-file-excel"></i> Descargar Reporte Detallado
+            </a>
+        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-orange-500 transition-colors">
+                <div class="text-orange-500 mb-2"><i class="fas fa-fire-alt fa-2x"></i></div>
                 <div class="text-slate-400 text-sm font-semibold uppercase">Total Focos</div>
                 <div class="text-3xl font-bold">{{ stats.total_focos }}</div>
             </div>
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-                <div class="text-slate-400 text-sm font-semibold uppercase">Riesgo</div>
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-red-500 transition-colors">
+                <div class="text-red-500 mb-2"><i class="fas fa-biohazard fa-2x"></i></div>
+                <div class="text-slate-400 text-sm font-semibold uppercase">Riesgo Predominante</div>
                 <div class="text-3xl font-bold">{{ stats.riesgo_avg }}</div>
             </div>
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-yellow-500 transition-colors">
+                <div class="text-yellow-500 mb-2"><i class="fas fa-bolt fa-2x"></i></div>
                 <div class="text-slate-400 text-sm font-semibold uppercase">Intensidad Promedio (FRP)</div>
                 <div class="text-3xl font-bold">{{ stats.intensidad_max }}</div>
             </div>
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
-                <div class="text-slate-400 text-sm font-semibold uppercase">Hectáreas (Est.)</div>
+            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-blue-500 transition-colors">
+                <div class="text-blue-500 mb-2"><i class="fas fa-map-marked-alt fa-2x"></i></div>
+                <div class="text-slate-400 text-sm font-semibold uppercase">Hectáreas Afectadas (Estimadas)</div>
                 <div class="text-3xl font-bold">{{ stats.area_critica }}</div>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="bg-slate-800 p-4 rounded-3xl h-[600px] overflow-hidden">
-                <iframe src="/static/mapa_generado.html" class="w-full h-full border-none"></iframe>
+        <div class="bg-slate-800 rounded-3xl overflow-hidden shadow-2xl border border-slate-700 relative">
+            <div id="loader" class="absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-orange-500"></div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-3xl h-[600px] overflow-hidden">
-                <iframe src="/static/evolucion_historica.html" class="w-full h-full border-none"></iframe>
-            </div>
+            <div class="card-header">📊 Mapa Interactivo</div>
+            <iframe src="/mapa_embed" class="w-full h-[600px]" onload="document.getElementById('loader').style.display='none'"></iframe>
         </div>
-        
-        <div class="mt-8 text-center">
-            <a href="/static/detalle_incendios.xlsx" class="bg-green-600 px-6 py-3 rounded-xl font-bold">Descargar Excel (6 Pestañas)</a>
+            <div class="card mt-4">
+        <div class="card-header">📊 Evolución Histórica de Focos</div>
+        <div class="card-body">
+            <iframe src="/evolucion_embed" width="100%" height="500px" frameborder="0"></iframe>
         </div>
     </div>
+    </div>
+
 </body>
 </html>
