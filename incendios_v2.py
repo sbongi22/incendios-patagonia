@@ -863,13 +863,16 @@ if __name__ == "__main__":
         intensidad = df['frp'].max() if not df.empty else 0
         riesgo = df['nivel_riesgo'].mode()[0] if not df.empty else "N/A"
 
+        ahora_argentina = datetime.now() - timedelta(hours=3)
+        fecha_dashboard = ahora_argentina.strftime("%d/%m/%Y %H:%M")
+
         nuevos_stats = {
             "id": 1,
             "total_focos": str(total),
             "riesgo_avg": riesgo,
             "intensidad_max": f"{intensidad:.1f}",
             "area_critica": "Patagonia",
-            "ultima_actualizacion": datetime.now().strftime("%d/%m/%Y %H:%M")
+            "ultima_actualizacion": fecha_dashboard
         }
         sb.table("stats").upsert(nuevos_stats).execute()
         print("\n🚀 ¡ÉXITO! Todo en /static y Supabase actualizado.")
