@@ -77,16 +77,18 @@ class AnalizadorIncendiosHistorico:
     
     def calcular_riesgo_fwi(self, viento, humedad, lluvia, temperatura):
         """
-        Calcula índice de riesgo FWI simplificado
-        Basado en: viento (40%), humedad (30%), lluvia (20%), temperatura (10%)
+        Calcula riesgo basado en la regla 30-30-30 y el índice FWI
         """
-        # Normalizar valores
-        viento_norm = min(viento / 50, 1.0)  # Máx 50 km/h = 1.0
-        humedad_norm = (100 - humedad) / 100  # Menor humedad = mayor riesgo
-        lluvia_norm = max(0, 1 - (lluvia / 50))  # Más lluvia = menor riesgo
-        temp_norm = min((temperatura - 10) / 30, 1.0)  # 10°C base, máx 40°C = 1.0
+        # REGLA ORO: Si se cumple 30-30-30, el riesgo es CRÍTICO
+        if temperatura >= 30 and humedad <= 30 and viento >= 30:
+            return 100.0
+            
+        # Si no se cumple la regla, calculamos el riesgo ponderado
+        viento_norm = min(viento / 50, 1.0)
+        humedad_norm = (100 - humedad) / 100
+        lluvia_norm = max(0, 1 - (lluvia / 50))
+        temp_norm = min((temperatura - 10) / 30, 1.0)
         
-        # Calcular índice (0-100)
         indice = (
             viento_norm * 0.4 +
             humedad_norm * 0.3 +
@@ -94,14 +96,15 @@ class AnalizadorIncendiosHistorico:
             temp_norm * 0.1
         ) * 100
         
-        indice = max(0, min(indice, 100))  # Asegurar entre 0-100
-        return round(indice, 1)
+        return round(max(0, min(indice, 100)), 1)
     
     def clasificar_riesgo(self, indice):
         """
-        Clasifica el índice en niveles de riesgo
+        Clasifica el índice en niveles de riesgo incluyendo Alerta 30-30-30
         """
-        if indice < 20:
+        if indice >= 100:
+            return "EXTREMO (30-30-30)"
+        elif indice < 20:
             return "BAJO"
         elif indice < 40:
             return "MODERADO"
