@@ -63,9 +63,12 @@ def update():
         analizador.crear_graficos_evolucion(evolucion, nombre_archivo='static/evolucion_historica.html')
         analizador.exportar_excel_completo(df, evolucion, nombre_archivo='static/detalle_incendios.xlsx')
         
-        # 4. Actualizar Supabase (Reutilizamos la conexión de app.py)
+        # 4. Actualizar Supabase (Copiamos la lógica de incendios_v2.py)
         total = len(df)
-        intensidad = df['frp'].max() if not df.empty else 0
+        
+        # NUEVOS CÁLCULOS (Iguales a incendios_v2.py)
+        superficie_total = evolucion['superficie_estimada_ha'].iloc[-1] if not evolucion.empty else 0
+        frp_promedio = df['frp'].mean() if not df.empty else 0
         riesgo = df['nivel_riesgo'].mode()[0] if not df.empty else "N/A"
         
         ahora_argentina = datetime.now() - timedelta(hours=3)
@@ -75,8 +78,8 @@ def update():
             "id": 1,
             "total_focos": str(total),
             "riesgo_avg": riesgo,
-            "intensidad_max": f"{intensidad:.1f}",
-            "area_critica": "Patagonia",
+            "intensidad_max": f"{frp_promedio:.1f} MW",    
+            "area_critica": f"{superficie_total:,.0f} ha",  
             "ultima_actualizacion": fecha_dashboard
         }
         
