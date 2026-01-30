@@ -443,11 +443,10 @@ class AnalizadorIncendiosHistorico:
         # Leyenda actualizada con riesgo
         leyenda_html = f'''
         <div style="position: fixed; 
-                    bottom: 50px; right: 50px; width: 320px; 
+                    bottom: 50px; right: 40px; width: 320px; 
                     background-color: white; border:2px solid grey; z-index:9999; 
                     font-size:12px; padding: 12px; border-radius: 5px;">
         <p style="margin:0; font-weight:bold; font-size:14px;">🔥 Incendios Patagonia Argentina</p>
-        <p style="margin:5px 0; font-size:11px; color:#666;">Del 1/1/2026 al {datetime.now().strftime('%d/%m/%Y')}</p>
         
         <hr style="margin: 8px 0;">
         
