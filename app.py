@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, render_template, redirect
+from flask import Flask, render_template, redirect, send_file
 from supabase import create_client
 from datetime import datetime, timedelta
 
@@ -16,33 +16,25 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 STORAGE_URL = f"{SUPABASE_URL}/storage/v1/object/public/archivos_incendios"
 
 def subir_a_storage(ruta_local, nombre_destino):
-    """Sube el archivo y fuerza la actualización de metadatos en Supabase."""
+    """Sube solo el archivo Excel a Supabase Storage."""
     try:
-        # Mapeo estricto de tipos
-        if nombre_destino.endswith(".html"):
-            c_type = "text/html"
-        elif nombre_destino.endswith(".xlsx"):
-            c_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        else:
-            c_type = "application/octet-stream"
+        # Solo para archivos Excel
+        c_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
         with open(ruta_local, 'rb') as f:
-            # Intentamos la subida (upsert=True permite reemplazar el archivo)
-            # Asegúrate de pasar el content_type fuera del diccionario si usas versiones recientes de la librería
             supabase.storage.from_("archivos_incendios").upload(
                 path=nombre_destino,
                 file=f,
                 file_options={
                     "x-upsert": "true",
                     "content-type": c_type,
-                    "cache-control": "0"  # Evita que el navegador guarde la versión vieja "rota"
+                    "cache-control": "0"
                 }
             )
         print(f"✅ {nombre_destino} subido como {c_type}.")
         
     except Exception as e:
-        # Si el error es porque ya existe, intentamos actualizarlo
-        print(f"⚠️ Error en subida, intentando actualización: {e}")
+        print(f"⚠️ Error en subida: {e}")
         
 @app.route('/')
 def index():
@@ -58,14 +50,29 @@ def index():
 
 @app.route('/mapa_embed')
 def mapa_embed():
-    return redirect(f"{STORAGE_URL}/mapa_generado.html")
+    """Sirve el mapa HTML directamente desde el servidor"""
+    try:
+        if os.path.exists('mapa_generado.html'):
+            return send_file('mapa_generado.html', mimetype='text/html')
+        else:
+            return "<h1>⚠️ Mapa no generado aún</h1><p>Ejecuta /update_dashboard primero</p><a href='/'>Volver</a>", 404
+    except Exception as e:
+        return f"<h1>❌ Error</h1><p>{str(e)}</p>", 500
 
 @app.route('/evolucion_embed')
 def evolucion_embed():
-    return redirect(f"{STORAGE_URL}/evolucion_historica.html")
+    """Sirve los gráficos HTML directamente desde el servidor"""
+    try:
+        if os.path.exists('evolucion_historica.html'):
+            return send_file('evolucion_historica.html', mimetype='text/html')
+        else:
+            return "<h1>⚠️ Gráficos no generados aún</h1><p>Ejecuta /update_dashboard primero</p><a href='/'>Volver</a>", 404
+    except Exception as e:
+        return f"<h1>❌ Error</h1><p>{str(e)}</p>", 500
 
 @app.route('/descargar')
 def descargar():
+    """Redirige al Excel en Supabase Storage"""
     return redirect(f"{STORAGE_URL}/detalle_incendios.xlsx")
 
 @app.route('/update_dashboard')
@@ -80,14 +87,12 @@ def update():
         df = resultados['datos']
         evolucion = resultados['evolucion']
         
-        # Generar archivos locales sin el prefijo 'static/'
+        # Generar archivos locales (los HTML se quedan en el servidor)
         analizador.crear_mapa_interactivo(df, nombre_archivo='mapa_generado.html')
         analizador.crear_graficos_evolucion(evolucion, nombre_archivo='evolucion_historica.html')
         analizador.exportar_excel_completo(df, evolucion, nombre_archivo='detalle_incendios.xlsx')
         
-        # Subir a Storage con los nuevos metadatos
-        subir_a_storage('mapa_generado.html', 'mapa_generado.html')
-        subir_a_storage('evolucion_historica.html', 'evolucion_historica.html')
+        # Solo subir el Excel a Storage (los HTML se sirven localmente)
         subir_a_storage('detalle_incendios.xlsx', 'detalle_incendios.xlsx')
         
         # Actualización de estadísticas en tabla 'stats'
@@ -106,9 +111,17 @@ def update():
         }
         supabase.table("stats").upsert(nuevos_stats).execute()
         
-        return "<h1>🚀 Dashboard actualizado con éxito</h1><p>Los archivos HTML ahora tienen el formato correcto.</p><a href='/'>Inicio</a>"
+        return """
+        <h1>🚀 Dashboard actualizado con éxito</h1>
+        <p>✅ Mapa interactivo generado</p>
+        <p>✅ Gráficos de evolución generados</p>
+        <p>✅ Excel subido a Storage</p>
+        <p>✅ Estadísticas actualizadas</p>
+        <br>
+        <a href='/'>← Volver al inicio</a>
+        """
     except Exception as e:
-        return f"<h1>❌ Error</h1><p>{str(e)}</p>"
+        return f"<h1>❌ Error</h1><p>{str(e)}</p><a href='/'>Volver</a>", 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
