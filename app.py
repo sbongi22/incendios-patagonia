@@ -16,29 +16,30 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 STORAGE_URL = f"{SUPABASE_URL}/storage/v1/object/public/archivos_incendios"
 
 def subir_a_storage(ruta_local, nombre_destino):
-    """Sube el archivo especificando el content-type para que el navegador lo renderice correctamente."""
+    """Sube el archivo forzando el Content-Type para renderizado en navegador."""
     try:
-        # Definimos el tipo de contenido según la extensión del archivo
+        # Mapeo de extensiones a Content-Type
         if nombre_destino.endswith(".html"):
-            content_type = "text/html"
+            c_type = "text/html"
         elif nombre_destino.endswith(".xlsx"):
-            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            c_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         else:
-            content_type = "application/octet-stream"
+            c_type = "application/octet-stream"
 
         with open(ruta_local, 'rb') as f:
+            # Es vital pasar el content_type en file_options para que Supabase lo reconozca
             supabase.storage.from_("archivos_incendios").upload(
                 path=nombre_destino,
                 file=f,
                 file_options={
                     "x-upsert": "true",
-                    "content-type": content_type  # <--- Crucial para la visualización
+                    "content-type": c_type  # Asegura que se envíe este encabezado
                 }
             )
-        print(f"✅ {nombre_destino} subido correctamente como {content_type}.")
+        print(f"✅ {nombre_destino} subido correctamente como {c_type}.")
     except Exception as e:
         print(f"❌ Error subiendo {nombre_destino}: {e}")
-
+        
 @app.route('/')
 def index():
     try:
