@@ -12,7 +12,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXV
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# URL base para acceder a los archivos públicos en tu Bucket
+# URL base para acceder a los archivos públicos en tu Bucket (API URL)
 STORAGE_URL = f"{SUPABASE_URL}/storage/v1/object/public/archivos_incendios"
 
 def subir_a_storage(ruta_local, nombre_destino):
