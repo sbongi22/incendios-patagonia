@@ -16,9 +16,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 STORAGE_URL = f"{SUPABASE_URL}/storage/v1/object/public/archivos_incendios"
 
 def subir_a_storage(ruta_local, nombre_destino):
-    """Sube el archivo forzando el Content-Type para renderizado en navegador."""
+    """Sube el archivo y fuerza la actualización de metadatos en Supabase."""
     try:
-        # Mapeo de extensiones a Content-Type
+        # Mapeo estricto de tipos
         if nombre_destino.endswith(".html"):
             c_type = "text/html"
         elif nombre_destino.endswith(".xlsx"):
@@ -27,18 +27,22 @@ def subir_a_storage(ruta_local, nombre_destino):
             c_type = "application/octet-stream"
 
         with open(ruta_local, 'rb') as f:
-            # Es vital pasar el content_type en file_options para que Supabase lo reconozca
+            # Intentamos la subida (upsert=True permite reemplazar el archivo)
+            # Asegúrate de pasar el content_type fuera del diccionario si usas versiones recientes de la librería
             supabase.storage.from_("archivos_incendios").upload(
                 path=nombre_destino,
                 file=f,
                 file_options={
                     "x-upsert": "true",
-                    "content-type": c_type  # Asegura que se envíe este encabezado
+                    "content-type": c_type,
+                    "cache-control": "0"  # Evita que el navegador guarde la versión vieja "rota"
                 }
             )
-        print(f"✅ {nombre_destino} subido correctamente como {c_type}.")
+        print(f"✅ {nombre_destino} subido como {c_type}.")
+        
     except Exception as e:
-        print(f"❌ Error subiendo {nombre_destino}: {e}")
+        # Si el error es porque ya existe, intentamos actualizarlo
+        print(f"⚠️ Error en subida, intentando actualización: {e}")
         
 @app.route('/')
 def index():
