@@ -837,13 +837,11 @@ if __name__ == "__main__":
     df = resultados['datos']
     evolucion = resultados['evolucion']
     
-    # 2. GUARDAR EN STATIC (Nombres fijos para que app.py los encuentre)
+    # 2. GUARDAR EN SUPABASE
     print("Generando archivos en carpeta static...")
-    analizador.crear_mapa_interactivo(df, nombre_archivo='static/mapa_generado.html')
-    analizador.crear_graficos_evolucion(evolucion, nombre_archivo='static/evolucion_historica.html')
-    
-    # Forzamos el nombre exacto que espera app.py
-    analizador.exportar_excel_completo(df, evolucion, nombre_archivo='static/detalle_incendios.xlsx')
+    analizador.crear_mapa_interactivo(df, nombre_archivo='mapa_generado.html')
+    analizador.crear_graficos_evolucion(evolucion, nombre_archivo='evolucion_historica.html')
+    analizador.exportar_excel_completo(df, evolucion, nombre_archivo='detalle_incendios.xlsx')
     
     # 3. ACTUALIZAR SUPABASE
     try:
