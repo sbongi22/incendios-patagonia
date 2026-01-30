@@ -538,7 +538,7 @@ class AnalizadorIncendiosHistorico:
             row=3, col=1
         )
                 
-        # Actualizar ejes con estilo dark
+        # Actualizar ejes con estilo oscuro
         fig.update_xaxes(
             title_text="Fecha",
             row=3, col=1,
@@ -600,12 +600,6 @@ class AnalizadorIncendiosHistorico:
                 color='#e2e8f0'
             ),
             margin=dict(l=60, r=40, t=80, b=60),
-            title=dict(
-                text=f"<b>📊 Evolución de Incendios Patagonia Argentina</b><br><sub>Del 1/01/2026 al {datetime.now().strftime('%d/%m/%Y')}</sub>",
-                font=dict(size=20, color='#f1f5f9'),
-                x=0.5,
-                xanchor='center'
-            ),
             hoverlabel=dict(
                 bgcolor='#1e293b',
                 font_size=13,
