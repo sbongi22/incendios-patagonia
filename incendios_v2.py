@@ -477,7 +477,7 @@ class AnalizadorIncendiosHistorico:
         return mapa
     
     def crear_graficos_evolucion(self, evolucion, nombre_archivo='evolucion_historica.html'):
-        """Crea gráficos de evolución temporal"""
+        """Crea gráficos de evolución temporal con estilo dark mode"""
         fig = make_subplots(
             rows=3, cols=1,
             subplot_titles=(
@@ -485,65 +485,138 @@ class AnalizadorIncendiosHistorico:
                 '📈 Focos acumulados en el tiempo',
                 '📏 Superficie estimada afectada (hectáreas)',
             ),
-            vertical_spacing=0.08,
+            vertical_spacing=0.12,
             row_heights=[0.33, 0.33, 0.34]
         )
         
-        # Gráfico 1: Focos diarios
+        # Gráfico 1: Focos diarios con gradiente naranja-rojo
         fig.add_trace(
             go.Bar(
                 x=evolucion['acq_date'],
                 y=evolucion['focos_nuevos'],
                 name='Focos por día',
-                marker_color='orangered',
+                marker=dict(
+                    color=evolucion['focos_nuevos'],
+                    colorscale=[[0, '#f97316'], [0.5, '#dc2626'], [1, '#991b1b']],
+                    line=dict(color='rgba(249, 115, 22, 0.3)', width=1)
+                ),
                 hovertemplate='<b>%{x|%d/%m/%Y}</b><br>Focos: %{y}<extra></extra>'
             ),
             row=1, col=1
         )
         
-        # Gráfico 2: Acumulados
+        # Gráfico 2: Acumulados con área sombreada
         fig.add_trace(
             go.Scatter(
                 x=evolucion['acq_date'],
                 y=evolucion['focos_acumulados'],
                 name='Focos acumulados',
                 mode='lines',
-                line=dict(color='crimson', width=3),
+                line=dict(color='#10b981', width=3, shape='spline'),
                 fill='tozeroy',
-                fillcolor='rgba(220, 20, 60, 0.2)',
+                fillcolor='rgba(16, 185, 129, 0.15)',
                 hovertemplate='<b>%{x|%d/%m/%Y}</b><br>Total: %{y:,}<extra></extra>'
             ),
             row=2, col=1
         )
         
-        # Gráfico 3: Superficie
+        # Gráfico 3: Superficie con marcadores
         fig.add_trace(
             go.Scatter(
                 x=evolucion['acq_date'],
                 y=evolucion['superficie_estimada_ha'],
                 name='Superficie',
                 mode='lines+markers',
-                line=dict(color='darkred', width=3),
-                marker=dict(size=6),
+                line=dict(color='#3b82f6', width=3, shape='spline'),
+                marker=dict(
+                    size=6,
+                    color='#3b82f6',
+                    line=dict(color='#1e40af', width=2)
+                ),
                 hovertemplate='<b>%{x|%d/%m/%Y}</b><br>%{y:,.0f} ha<extra></extra>'
             ),
             row=3, col=1
         )
                 
-        # Layout
-        fig.update_xaxes(title_text="Fecha", row=3, col=1)
-        fig.update_yaxes(title_text="Cantidad", row=1, col=1)
-        fig.update_yaxes(title_text="Focos totales", row=2, col=1)
-        fig.update_yaxes(title_text="Hectáreas", row=3, col=1)
+        # Actualizar ejes con estilo dark
+        fig.update_xaxes(
+            title_text="Fecha",
+            row=3, col=1,
+            showgrid=True,
+            gridcolor='rgba(71, 85, 105, 0.3)',
+            linecolor='rgba(71, 85, 105, 0.5)',
+            title_font=dict(color='#cbd5e1', size=12),
+            tickfont=dict(color='#94a3b8', size=10)
+        )
         
+        for i in range(1, 4):
+            fig.update_xaxes(
+                showgrid=True,
+                gridcolor='rgba(71, 85, 105, 0.3)',
+                linecolor='rgba(71, 85, 105, 0.5)',
+                tickfont=dict(color='#94a3b8', size=10),
+                row=i, col=1
+            )
+        
+        fig.update_yaxes(
+            title_text="Cantidad",
+            row=1, col=1,
+            showgrid=True,
+            gridcolor='rgba(71, 85, 105, 0.3)',
+            linecolor='rgba(71, 85, 105, 0.5)',
+            title_font=dict(color='#cbd5e1', size=12),
+            tickfont=dict(color='#94a3b8', size=10)
+        )
+        
+        fig.update_yaxes(
+            title_text="Focos totales",
+            row=2, col=1,
+            showgrid=True,
+            gridcolor='rgba(71, 85, 105, 0.3)',
+            linecolor='rgba(71, 85, 105, 0.5)',
+            title_font=dict(color='#cbd5e1', size=12),
+            tickfont=dict(color='#94a3b8', size=10)
+        )
+        
+        fig.update_yaxes(
+            title_text="Hectáreas",
+            row=3, col=1,
+            showgrid=True,
+            gridcolor='rgba(71, 85, 105, 0.3)',
+            linecolor='rgba(71, 85, 105, 0.5)',
+            title_font=dict(color='#cbd5e1', size=12),
+            tickfont=dict(color='#94a3b8', size=10)
+        )
+        
+        # Layout con tema oscuro
         fig.update_layout(
             height=900,
-            title_text=f"<b>📊 Evolución de Incendios Patagonia Argentina - Del 1/01/2026 al {datetime.now().strftime('%d/%m/%Y')}</b>",
-            title_font_size=18,
             showlegend=False,
-            template="plotly_white",
-            hovermode='x unified'
+            hovermode='x unified',
+            plot_bgcolor='#0f172a',
+            paper_bgcolor='#0f172a',
+            font=dict(
+                family='Inter, sans-serif',
+                color='#e2e8f0'
+            ),
+            margin=dict(l=60, r=40, t=80, b=60),
+            title=dict(
+                text=f"<b>📊 Evolución de Incendios Patagonia Argentina</b><br><sub>Del 1/01/2026 al {datetime.now().strftime('%d/%m/%Y')}</sub>",
+                font=dict(size=20, color='#f1f5f9'),
+                x=0.5,
+                xanchor='center'
+            ),
+            hoverlabel=dict(
+                bgcolor='#1e293b',
+                font_size=13,
+                font_family='Inter, sans-serif',
+                bordercolor='#475569'
+            )
         )
+        
+        # Actualizar títulos de subplots con mejor estilo
+        for annotation in fig['layout']['annotations']:
+            annotation['font'] = dict(size=14, color='#cbd5e1', family='Inter, sans-serif')
         
         fig.write_html(nombre_archivo)
         print(f"✓ Gráficos guardados: {nombre_archivo}")
@@ -760,8 +833,6 @@ class AnalizadorIncendiosHistorico:
         
         # 6. Crear visualizaciones
         print("\n🎨 Generando visualizaciones...")
-        #self.crear_mapa_interactivo(df_filtrado)
-        #self.crear_graficos_evolucion(evolucion)
         
         # 7. Exportar Excel completo
         archivo_excel = None
