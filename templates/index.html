@@ -2,64 +2,335 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Monitoreo Incendios Patagonia</title>
-    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.png') }}"></head>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.8;
+                transform: scale(1.05);
+            }
+        }
+        
+        @keyframes shimmer {
+            0% {
+                background-position: -1000px 0;
+            }
+            100% {
+                background-position: 1000px 0;
+            }
+        }
+        
+        .animate-fadeInUp {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+        
+        .animate-pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        .stat-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+        }
+        
+        .stat-card:nth-child(1) { animation-delay: 0.1s; }
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:nth-child(3) { animation-delay: 0.3s; }
+        .stat-card:nth-child(4) { animation-delay: 0.4s; }
+        
+        .stat-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #f97316 0%, #dc2626 50%, #991b1b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s linear infinite;
+            background-size: 200% 100%;
+        }
+        
+        .icon-glow {
+            filter: drop-shadow(0 0 8px currentColor);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover .icon-glow {
+            filter: drop-shadow(0 0 12px currentColor);
+            transform: scale(1.1);
+        }
+        
+        .live-badge {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        .glass-effect {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .download-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .download-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .download-btn:hover::before {
+            left: 100%;
+        }
+        
+        .map-container {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .map-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f97316, #dc2626, #f97316);
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+            z-index: 1;
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.875rem;
+            border: 1px solid #475569;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .section-title {
+            position: relative;
+            display: inline-block;
+            padding-bottom: 8px;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, #f97316, #dc2626);
+            border-radius: 2px;
+        }
+        
+        .loader-spinner {
+            border: 3px solid rgba(249, 115, 22, 0.1);
+            border-top-color: #f97316;
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-white font-sans">
-    <div class="container mx-auto px-4 py-8">
-        <div class="flex justify-between items-end border-b border-slate-700 pb-6 mb-8">
-            <div>
-                <h1 id="titulo" class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600">
-                    Incendios - Patagonia Argentina
-                </h1>
-                <p class="text-slate-400 mt-2"><i class="fas fa-satellite"></i>Datos de NASA FIRMS y Open-Meteo</p>
-                <p class="text-slate-400 mt-2" id="actualizacion">Última Actualización: <strong>{{ stats.ultima_actualizacion }}</strong></p>
-                <p class="text-slate-400 mt-2" style="font-size: 0.7rem;">* Los datos satelitales pueden presentar un desfase de 24 a 48 hs debido a los tiempos de procesamiento de la NASA (FIRMS) y validación de confianza.</p>
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header Section -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-700/50 pb-6 mb-8 gap-4">
+            <div class="animate-fadeInUp">
+                <div class="flex items-center gap-3 mb-2">
+                    <h1 id="titulo" class="text-4xl md:text-5xl font-extrabold gradient-text">
+                        Incendios - Patagonia Argentina
+                    </h1>
+                    <span class="live-badge bg-red-500 text-white text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1">
+                        <span class="w-2 h-2 bg-white rounded-full"></span>
+                        LIVE
+                    </span>
+                </div>
+                <p class="text-slate-400 mt-2 flex items-center gap-2">
+                    <i class="fas fa-satellite icon-glow text-blue-400"></i>
+                    Datos de NASA FIRMS y Open-Meteo
+                </p>
+                <p class="text-slate-300 mt-2 flex items-center gap-2" id="actualizacion">
+                    <i class="fas fa-clock text-emerald-400"></i>
+                    Última Actualización: <strong class="text-emerald-400">{{ stats.ultima_actualizacion }}</strong>
+                </p>
+                <p class="text-slate-500 mt-3 text-xs md:text-sm flex items-start gap-2">
+                    <i class="fas fa-info-circle mt-1"></i>
+                    <span>Los datos satelitales pueden presentar un desfase de 24 a 48 hs debido a los tiempos de procesamiento de la NASA (FIRMS) y validación de confianza.</span>
+                </p>
             </div>
-            <a href="/descargar" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-900/20">
+            <a href="/descargar" class="download-btn bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 shadow-xl shadow-emerald-900/30 hover:shadow-emerald-900/50 hover:scale-105 whitespace-nowrap">
                 <i class="fas fa-file-excel"></i> Descargar Reporte Detallado
             </a>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-orange-500 transition-colors">
-                <div class="text-orange-500 mb-2"><i class="fas fa-fire-alt fa-2x"></i></div>
-                <div class="text-slate-400 text-sm font-semibold uppercase">Total Focos</div>
-                <div class="text-3xl font-bold">{{ stats.total_focos }}</div>
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+            <!-- Total Focos -->
+            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-orange-500/30 hover:border-orange-500 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="relative z-10">
+                    <div class="tooltip">
+                        <div class="text-orange-500 mb-3">
+                            <i class="fas fa-fire-alt fa-2x icon-glow"></i>
+                        </div>
+                        <span class="tooltiptext">Focos de calor detectados por satélites MODIS y VIIRS</span>
+                    </div>
+                    <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Total Focos</div>
+                    <div class="text-4xl font-bold bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
+                        {{ stats.total_focos }}
+                    </div>
+                </div>
             </div>
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-red-500 transition-colors">
-                <div class="text-red-500 mb-2"><i class="fas fa-biohazard fa-2x"></i></div>
-                <div class="text-slate-400 text-sm font-semibold uppercase">Riesgo Predominante</div>
-                <div class="text-3xl font-bold">{{ stats.riesgo_avg }}</div>
+
+            <!-- Riesgo Predominante -->
+            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-red-500/30 hover:border-red-500 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="relative z-10">
+                    <div class="tooltip">
+                        <div class="text-red-500 mb-3">
+                            <i class="fas fa-exclamation-triangle fa-2x icon-glow"></i>
+                        </div>
+                        <span class="tooltiptext">Nivel de riesgo calculado según condiciones meteorológicas</span>
+                    </div>
+                    <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Riesgo Predominante</div>
+                    <div class="text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
+                        {{ stats.riesgo_avg }}
+                    </div>
+                </div>
             </div>
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-yellow-500 transition-colors">
-                <div class="text-yellow-500 mb-2"><i class="fas fa-bolt fa-2x"></i></div>
-                <div class="text-slate-400 text-sm font-semibold uppercase">Intensidad Promedio (FRP)</div>
-                <div class="text-3xl font-bold">{{ stats.intensidad_max }}</div>
+
+            <!-- Intensidad Promedio -->
+            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-yellow-500/30 hover:border-yellow-500 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="relative z-10">
+                    <div class="tooltip">
+                        <div class="text-yellow-500 mb-3">
+                            <i class="fas fa-bolt fa-2x icon-glow"></i>
+                        </div>
+                        <span class="tooltiptext">Fire Radiative Power - Mide la energía liberada por el fuego</span>
+                    </div>
+                    <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Intensidad Promedio (FRP)</div>
+                    <div class="text-4xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">
+                        {{ stats.intensidad_max }}
+                    </div>
+                </div>
             </div>
-            <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700 hover:border-blue-500 transition-colors">
-                <div class="text-blue-500 mb-2"><i class="fas fa-map-marked-alt fa-2x"></i></div>
-                <div class="text-slate-400 text-sm font-semibold uppercase">Hectáreas Afectadas (Estimadas)</div>
-                <div class="text-3xl font-bold">{{ stats.area_critica }}</div>
+
+            <!-- Hectáreas Afectadas -->
+            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-blue-500/30 hover:border-blue-500 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="relative z-10">
+                    <div class="tooltip">
+                        <div class="text-blue-500 mb-3">
+                            <i class="fas fa-map-marked-alt fa-2x icon-glow"></i>
+                        </div>
+                        <span class="tooltiptext">Estimación de área afectada basada en focos detectados</span>
+                    </div>
+                    <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Hectáreas Afectadas (Est.)</div>
+                    <div class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
+                        {{ stats.area_critica }}
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="bg-slate-800 rounded-3xl overflow-hidden shadow-2xl border border-slate-700 relative">
-            <div id="loader" class="absolute inset-0 flex items-center justify-center bg-slate-900 z-10">
-                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-orange-500"></div>
+        <!-- Mapa Interactivo -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-700/50 relative mb-6 map-container animate-fadeInUp" style="animation-delay: 0.5s; opacity: 0;">
+            <div id="loader" class="absolute inset-0 flex flex-col items-center justify-center glass-effect z-20">
+                <div class="loader-spinner animate-spin rounded-full h-16 w-16 mb-4"></div>
+                <p class="text-slate-400 font-semibold">Cargando mapa interactivo...</p>
             </div>
-            <div class="card-header">📊 Mapa Interactivo</div>
-            <iframe src="/mapa_embed" class="w-full h-[600px]" onload="document.getElementById('loader').style.display='none'"></iframe>
+            <div class="px-6 py-4 border-b border-slate-700/50 bg-slate-800/50">
+                <h2 class="text-2xl font-bold section-title flex items-center gap-3">
+                    <i class="fas fa-map-marked-alt text-blue-400"></i>
+                    Mapa Interactivo
+                </h2>
+                <p class="text-slate-400 text-sm mt-2">Visualización en tiempo real de focos de incendio detectados</p>
+            </div>
+            <iframe src="/mapa_embed" class="w-full h-[600px]" onload="document.getElementById('loader').style.display='none'" title="Mapa de incendios"></iframe>
         </div>
-            <div class="card mt-4">
-        <div class="card-header">📊 Evolución Histórica de Focos</div>
-        <div class="card-body">
-            <iframe src="/evolucion_embed" width="100%" height="500px" frameborder="0"></iframe>
-        </div>
-    </div>
-    </div>
 
+        <!-- Evolución Histórica -->
+        <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-700/50 relative animate-fadeInUp" style="animation-delay: 0.6s; opacity: 0;">
+            <div class="px-6 py-4 border-b border-slate-700/50 bg-slate-800/50">
+                <h2 class="text-2xl font-bold section-title flex items-center gap-3">
+                    <i class="fas fa-chart-line text-emerald-400"></i>
+                    Evolución Histórica de Focos
+                </h2>
+                <p class="text-slate-400 text-sm mt-2">Tendencia temporal de detección de incendios forestales</p>
+            </div>
+            <div class="p-4">
+                <iframe src="/evolucion_embed" class="w-full h-[500px] rounded-xl" frameborder="0" title="Gráfico de evolución"></iframe>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center text-slate-500 text-sm border-t border-slate-800 pt-6">
+            <p class="flex items-center justify-center gap-2 mb-2">
+                <i class="fas fa-shield-alt text-emerald-400"></i>
+                Sistema de Monitoreo de Incendios Forestales
+            </p>
+            <p>Desarrollado con datos abiertos de NASA FIRMS • Open-Meteo</p>
+        </div>
+    </div>
 </body>
 </html>
