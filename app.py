@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, render_template, redirect, send_file
+from flask import Flask, render_template, redirect, Response
 from supabase import create_client
 from datetime import datetime, timedelta
 
@@ -16,10 +16,15 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 STORAGE_URL = f"{SUPABASE_URL}/storage/v1/object/public/archivos_incendios"
 
 def subir_a_storage(ruta_local, nombre_destino):
-    """Sube solo el archivo Excel a Supabase Storage."""
+    """Sube archivos a Supabase Storage con el content-type correcto."""
     try:
-        # Solo para archivos Excel
-        c_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        # Mapeo de tipos MIME
+        if nombre_destino.endswith(".html"):
+            c_type = "text/html; charset=utf-8"
+        elif nombre_destino.endswith(".xlsx"):
+            c_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        else:
+            c_type = "application/octet-stream"
 
         with open(ruta_local, 'rb') as f:
             supabase.storage.from_("archivos_incendios").upload(
@@ -28,14 +33,36 @@ def subir_a_storage(ruta_local, nombre_destino):
                 file_options={
                     "x-upsert": "true",
                     "content-type": c_type,
-                    "cache-control": "0"
+                    "cache-control": "public, max-age=0"
                 }
             )
-        print(f"✅ {nombre_destino} subido como {c_type}.")
+        print(f"✅ {nombre_destino} subido correctamente como {c_type}")
+        return True
         
     except Exception as e:
-        print(f"⚠️ Error en subida: {e}")
+        print(f"⚠️ Error subiendo {nombre_destino}: {e}")
+        return False
+
+def descargar_de_storage(nombre_archivo):
+    """Descarga un archivo desde Supabase Storage y retorna su contenido."""
+    try:
+        # Obtener URL pública
+        url = f"{STORAGE_URL}/{nombre_archivo}"
         
+        # Descargar el archivo
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            print(f"✅ {nombre_archivo} descargado correctamente")
+            return response.content
+        else:
+            print(f"⚠️ Error descargando {nombre_archivo}: Status {response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error descargando {nombre_archivo}: {e}")
+        return None
+
 @app.route('/')
 def index():
     try:
@@ -45,30 +72,49 @@ def index():
             "area_critica": "Patagonia", "ultima_actualizacion": "Pendiente"
         }
     except Exception as e:
-        stats = {"total_focos": "Error", "riesgo_avg": "N/A", "intensidad_max": "---", "area_critica": "N/A", "ultima_actualizacion": "Error"}
+        stats = {"total_focos": "Error", "riesgo_avg": "N/A", "intensidad_max": "---", 
+                 "area_critica": "N/A", "ultima_actualizacion": "Error"}
     return render_template('index.html', stats=stats)
 
 @app.route('/mapa_embed')
 def mapa_embed():
-    """Sirve el mapa HTML directamente desde el servidor"""
+    """Descarga el mapa desde Storage y lo sirve como HTML"""
     try:
-        if os.path.exists('mapa_generado.html'):
-            return send_file('mapa_generado.html', mimetype='text/html')
+        # Descargar el contenido desde Storage
+        contenido = descargar_de_storage('mapa_generado.html')
+        
+        if contenido:
+            # Servir el contenido con el content-type correcto
+            return Response(contenido, mimetype='text/html; charset=utf-8')
         else:
-            return "<h1>⚠️ Mapa no generado aún</h1><p>Ejecuta /update_dashboard primero</p><a href='/'>Volver</a>", 404
+            return """
+            <h1>⚠️ Mapa no disponible</h1>
+            <p>El mapa aún no ha sido generado o hubo un error al descargarlo.</p>
+            <p><a href='/update_dashboard'>Generar dashboard</a> | <a href='/'>Volver al inicio</a></p>
+            """, 404
+            
     except Exception as e:
-        return f"<h1>❌ Error</h1><p>{str(e)}</p>", 500
+        return f"<h1>❌ Error</h1><p>{str(e)}</p><a href='/'>Volver</a>", 500
 
 @app.route('/evolucion_embed')
 def evolucion_embed():
-    """Sirve los gráficos HTML directamente desde el servidor"""
+    """Descarga los gráficos desde Storage y los sirve como HTML"""
     try:
-        if os.path.exists('evolucion_historica.html'):
-            return send_file('evolucion_historica.html', mimetype='text/html')
+        # Descargar el contenido desde Storage
+        contenido = descargar_de_storage('evolucion_historica.html')
+        
+        if contenido:
+            # Servir el contenido con el content-type correcto
+            return Response(contenido, mimetype='text/html; charset=utf-8')
         else:
-            return "<h1>⚠️ Gráficos no generados aún</h1><p>Ejecuta /update_dashboard primero</p><a href='/'>Volver</a>", 404
+            return """
+            <h1>⚠️ Gráficos no disponibles</h1>
+            <p>Los gráficos aún no han sido generados o hubo un error al descargarlos.</p>
+            <p><a href='/update_dashboard'>Generar dashboard</a> | <a href='/'>Volver al inicio</a></p>
+            """, 404
+            
     except Exception as e:
-        return f"<h1>❌ Error</h1><p>{str(e)}</p>", 500
+        return f"<h1>❌ Error</h1><p>{str(e)}</p><a href='/'>Volver</a>", 500
 
 @app.route('/descargar')
 def descargar():
@@ -83,19 +129,25 @@ def update():
         MAP_KEY = os.environ.get("MAP_KEY", "a66ff23e6b0f370791cb4bd2dd3123d0")
         analizador = AnalizadorIncendiosHistorico(MAP_KEY)
         
+        print("🔄 Generando reporte completo...")
         resultados = analizador.generar_reporte_completo()
         df = resultados['datos']
         evolucion = resultados['evolucion']
         
-        # Generar archivos locales (los HTML se quedan en el servidor)
+        # Generar archivos locales temporalmente
+        print("📊 Creando visualizaciones...")
         analizador.crear_mapa_interactivo(df, nombre_archivo='mapa_generado.html')
         analizador.crear_graficos_evolucion(evolucion, nombre_archivo='evolucion_historica.html')
         analizador.exportar_excel_completo(df, evolucion, nombre_archivo='detalle_incendios.xlsx')
         
-        # Solo subir el Excel a Storage (los HTML se sirven localmente)
-        subir_a_storage('detalle_incendios.xlsx', 'detalle_incendios.xlsx')
+        # Subir TODOS los archivos a Storage
+        print("☁️ Subiendo archivos a Supabase Storage...")
+        mapa_ok = subir_a_storage('mapa_generado.html', 'mapa_generado.html')
+        evolucion_ok = subir_a_storage('evolucion_historica.html', 'evolucion_historica.html')
+        excel_ok = subir_a_storage('detalle_incendios.xlsx', 'detalle_incendios.xlsx')
         
         # Actualización de estadísticas en tabla 'stats'
+        print("💾 Actualizando estadísticas...")
         superficie_total = evolucion['superficie_estimada_ha'].iloc[-1] if not evolucion.empty else 0
         frp_promedio = df['frp'].mean() if not df.empty else 0
         riesgo = df['nivel_riesgo'].mode()[0] if not df.empty else "N/A"
@@ -111,17 +163,32 @@ def update():
         }
         supabase.table("stats").upsert(nuevos_stats).execute()
         
-        return """
-        <h1>🚀 Dashboard actualizado con éxito</h1>
-        <p>✅ Mapa interactivo generado</p>
-        <p>✅ Gráficos de evolución generados</p>
-        <p>✅ Excel subido a Storage</p>
-        <p>✅ Estadísticas actualizadas</p>
+        # Resumen de resultados
+        status_mapa = "✅" if mapa_ok else "❌"
+        status_evolucion = "✅" if evolucion_ok else "❌"
+        status_excel = "✅" if excel_ok else "❌"
+        
+        return f"""
+        <h1>🚀 Dashboard actualizado</h1>
+        <p>{status_mapa} Mapa interactivo: {'Subido correctamente' if mapa_ok else 'Error al subir'}</p>
+        <p>{status_evolucion} Gráficos de evolución: {'Subidos correctamente' if evolucion_ok else 'Error al subir'}</p>
+        <p>{status_excel} Archivo Excel: {'Subido correctamente' if excel_ok else 'Error al subir'}</p>
+        <p>✅ Estadísticas actualizadas en base de datos</p>
+        <p>📊 Total de focos detectados: {len(df)}</p>
         <br>
-        <a href='/'>← Volver al inicio</a>
+        <p><a href='/'>← Volver al inicio</a> | <a href='/mapa_embed'>Ver mapa</a> | <a href='/evolucion_embed'>Ver gráficos</a></p>
         """
+        
     except Exception as e:
-        return f"<h1>❌ Error</h1><p>{str(e)}</p><a href='/'>Volver</a>", 500
+        import traceback
+        error_detallado = traceback.format_exc()
+        return f"""
+        <h1>❌ Error al actualizar dashboard</h1>
+        <p><strong>Error:</strong> {str(e)}</p>
+        <pre>{error_detallado}</pre>
+        <br>
+        <a href='/'>Volver al inicio</a>
+        """, 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
