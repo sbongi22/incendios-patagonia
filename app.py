@@ -170,13 +170,9 @@ def update():
         
         return f"""
         <h1>🚀 Dashboard actualizado</h1>
-        <p>{status_mapa} Mapa interactivo: {'Subido correctamente' if mapa_ok else 'Error al subir'}</p>
-        <p>{status_evolucion} Gráficos de evolución: {'Subidos correctamente' if evolucion_ok else 'Error al subir'}</p>
-        <p>{status_excel} Archivo Excel: {'Subido correctamente' if excel_ok else 'Error al subir'}</p>
         <p>✅ Estadísticas actualizadas en base de datos</p>
-        <p>📊 Total de focos detectados: {len(df)}</p>
         <br>
-        <p><a href='/'>← Volver al inicio</a> | <a href='/mapa_embed'>Ver mapa</a> | <a href='/evolucion_embed'>Ver gráficos</a></p>
+        <p><a href='/'>← Volver al inicio</a></p>
         """
         
     except Exception as e:

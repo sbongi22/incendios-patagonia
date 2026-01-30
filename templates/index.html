@@ -58,6 +58,40 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             animation: fadeInUp 0.6s ease-out forwards;
             opacity: 0;
+            overflow: visible;
+            z-index: 1;
+        }
+        
+        .stat-card:hover {
+            z-index: 9998;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 1rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+        
+        .stat-card:nth-child(1)::before { 
+            background: linear-gradient(to bottom right, rgba(249, 115, 22, 0.05), transparent);
+        }
+        .stat-card:nth-child(2)::before { 
+            background: linear-gradient(to bottom right, rgba(239, 68, 68, 0.05), transparent);
+        }
+        .stat-card:nth-child(3)::before { 
+            background: linear-gradient(to bottom right, rgba(234, 179, 8, 0.05), transparent);
+        }
+        .stat-card:nth-child(4)::before { 
+            background: linear-gradient(to bottom right, rgba(59, 130, 246, 0.05), transparent);
         }
         
         .stat-card:nth-child(1) { animation-delay: 0.1s; }
@@ -137,33 +171,69 @@
             z-index: 1;
         }
         
+        /* TOOLTIPS MEJORADOS */
         .tooltip {
             position: relative;
             display: inline-block;
+            cursor: help;
         }
         
         .tooltip .tooltiptext {
             visibility: hidden;
-            width: 200px;
-            background-color: #1e293b;
-            color: #fff;
-            text-align: center;
-            border-radius: 8px;
-            padding: 8px;
+            width: 280px;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #e2e8f0;
+            text-align: left;
+            border-radius: 12px;
+            padding: 12px 16px;
             position: absolute;
-            z-index: 1;
-            bottom: 125%;
+            z-index: 99999;
+            top: 120%;
             left: 50%;
-            margin-left: -100px;
+            margin-left: -140px;
             opacity: 0;
-            transition: opacity 0.3s;
+            transition: all 0.3s ease;
             font-size: 0.875rem;
-            border: 1px solid #475569;
+            line-height: 1.5;
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            font-weight: 500;
+            pointer-events: none;
+        }
+        
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            margin-left: -8px;
+            border-width: 8px;
+            border-style: solid;
+            border-color: transparent transparent #1e293b transparent;
         }
         
         .tooltip:hover .tooltiptext {
             visibility: visible;
             opacity: 1;
+            top: 130%;
+        }
+        
+        /* Asegurar que el grid no cree contexto de apilamiento */
+        .grid {
+            isolation: auto;
+        }
+        
+        .tooltip .tooltiptext .tooltip-title {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        
+        .tooltip .tooltiptext .tooltip-icon {
+            margin-right: 6px;
+            opacity: 0.8;
         }
         
         .section-title {
@@ -205,7 +275,7 @@
                 </p>
                 <p class="text-slate-500 mt-3 text-xs md:text-sm flex items-start gap-2">
                     <i class="fas fa-info-circle mt-1"></i>
-                    <span>Los datos satelitales pueden presentar un desfase de 24 a 48 hs debido a los tiempos de procesamiento de la NASA (FIRMS) y validación de confianza.</span>
+                    <span>Los datos satelitales pueden presentar un desfase de 24 a 48 hs debido a los tiempos de procesamiento de la NASA (FIRMS).</span>
                 </p>
             </div>
             <a href="/descargar" class="download-btn bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 shadow-xl shadow-emerald-900/30 hover:shadow-emerald-900/50 hover:scale-105 whitespace-nowrap">
@@ -216,14 +286,16 @@
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
             <!-- Total Focos -->
-            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-orange-500/30 hover:border-orange-500 relative overflow-hidden group">
-                <div class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-orange-500/30 hover:border-orange-500 relative group" style="overflow: visible;">
                 <div class="relative z-10">
                     <div class="tooltip">
                         <div class="text-orange-500 mb-3">
                             <i class="fas fa-fire-alt fa-2x icon-glow"></i>
                         </div>
-                        <span class="tooltiptext">Focos de calor detectados por satélites MODIS y VIIRS</span>
+                        <span class="tooltiptext">
+                            <span class="tooltip-title"><i class="fas fa-fire-alt tooltip-icon"></i>Total de Focos</span>
+                            Cantidad total de focos de calor detectados por satélites MODIS y VIIRS durante todo el período analizado. Cada foco representa una anomalía térmica que puede indicar un incendio activo.
+                        </span>
                     </div>
                     <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Total Focos</div>
                     <div class="text-4xl font-bold bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
@@ -233,14 +305,16 @@
             </div>
 
             <!-- Riesgo Predominante -->
-            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-red-500/30 hover:border-red-500 relative overflow-hidden group">
-                <div class="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-red-500/30 hover:border-red-500 relative group" style="overflow: visible;">
                 <div class="relative z-10">
                     <div class="tooltip">
                         <div class="text-red-500 mb-3">
                             <i class="fas fa-exclamation-triangle fa-2x icon-glow"></i>
                         </div>
-                        <span class="tooltiptext">Nivel de riesgo calculado según condiciones meteorológicas</span>
+                        <span class="tooltiptext">
+                            <span class="tooltip-title"><i class="fas fa-exclamation-triangle tooltip-icon"></i>Nivel de Riesgo</span>
+                            Categoría de riesgo más frecuente en el período. Se calcula considerando condiciones meteorológicas (temperatura, humedad, viento) y la intensidad del fuego (FRP).
+                        </span>
                     </div>
                     <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Riesgo Predominante</div>
                     <div class="text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
@@ -250,14 +324,16 @@
             </div>
 
             <!-- Intensidad Promedio -->
-            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-yellow-500/30 hover:border-yellow-500 relative overflow-hidden group">
-                <div class="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-yellow-500/30 hover:border-yellow-500 relative group" style="overflow: visible;">
                 <div class="relative z-10">
                     <div class="tooltip">
                         <div class="text-yellow-500 mb-3">
                             <i class="fas fa-bolt fa-2x icon-glow"></i>
                         </div>
-                        <span class="tooltiptext">Fire Radiative Power - Mide la energía liberada por el fuego</span>
+                        <span class="tooltiptext">
+                            <span class="tooltip-title"><i class="fas fa-bolt tooltip-icon"></i>Potencia Radiativa (FRP)</span>
+                            Fire Radiative Power promedio en Megawatts. Mide la energía liberada por el fuego detectada desde el espacio. Valores >50 MW indican incendios intensos, >100 MW son muy severos.
+                        </span>
                     </div>
                     <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Intensidad Promedio (FRP)</div>
                     <div class="text-4xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">
@@ -267,14 +343,16 @@
             </div>
 
             <!-- Hectáreas Afectadas -->
-            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-blue-500/30 hover:border-blue-500 relative overflow-hidden group">
-                <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div class="stat-card bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl border border-blue-500/30 hover:border-blue-500 relative group" style="overflow: visible;">
                 <div class="relative z-10">
                     <div class="tooltip">
                         <div class="text-blue-500 mb-3">
                             <i class="fas fa-map-marked-alt fa-2x icon-glow"></i>
                         </div>
-                        <span class="tooltiptext">Estimación de área afectada basada en focos detectados</span>
+                        <span class="tooltiptext">
+                            <span class="tooltip-title"><i class="fas fa-map-marked-alt tooltip-icon"></i>Superficie Afectada</span>
+                            Estimación de hectáreas totales afectadas por incendios. Se calcula mediante algoritmos de clustering espacial que agrupan focos cercanos y estiman el área de propagación.
+                        </span>
                     </div>
                     <div class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-2">Hectáreas Afectadas (Est.)</div>
                     <div class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
