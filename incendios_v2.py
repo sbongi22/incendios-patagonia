@@ -887,6 +887,7 @@ class AnalizadorIncendiosHistorico:
 # ============================================================
 # EJECUTAR ANÁLISIS
 # ============================================================
+
 if __name__ == "__main__":
     import os
     from supabase import create_client
