@@ -20,7 +20,7 @@ class AnalizadorIncendiosHistorico:
         self.map_key = map_key
         
         # Zona ampliada: Patagonia Argentina
-        self.zona_bounds = "-72.5,-47,-69,-42"
+        self.zona_bounds = "-73,-48,-68,-40"
         
         self.fecha_inicio_incendios = datetime(2026, 1, 1)
         
@@ -378,7 +378,7 @@ class AnalizadorIncendiosHistorico:
         evolucion.columns = ['focos_nuevos', 'frp_total', 'frp_promedio', 'frp_maximo', 'confianza']
         evolucion = evolucion.reset_index()
         evolucion['focos_acumulados'] = evolucion['focos_nuevos'].cumsum()
-        evolucion['superficie_estimada_ha'] = evolucion['focos_acumulados'] * 14
+        evolucion['superficie_estimada_ha'] = evolucion['focos_acumulados'] * 55
         
         return evolucion
     
@@ -934,7 +934,6 @@ if __name__ == "__main__":
         }
         
         sb.table("stats").upsert(nuevos_stats).execute()
-        print("\n🚀 ¡Métricas actualizadas! Hectáreas y FRP promedio enviados.")
         
     except Exception as e:
         print(f"❌ Error Supabase: {e}")
