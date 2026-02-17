@@ -135,10 +135,10 @@ def update():
         }
         supabase.table("stats").upsert(nuevos_stats).execute()
         
-        return "<h1>🚀 Dashboard actualizado con éxito</h1><p><a href='/'>Volver</a></p>"
+        return "<h1>Dashboard actualizado con éxito</h1><p><a href='/'>Volver</a></p>"
         
     except Exception as e:
-        return f"<h1>❌ Error</h1><pre>{traceback.format_exc()}</pre>", 500
+        return f"<h1>Error</h1><pre>{traceback.format_exc()}</pre>", 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
